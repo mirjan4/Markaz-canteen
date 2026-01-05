@@ -31,6 +31,14 @@ export default function AdminDashboard() {
     const [newUser, setNewUser] = useState({ name: '', phone: '', password: '' });
     const [msg, setMsg] = useState('');
 
+    // Settings State
+    const [adminProfile, setAdminProfile] = useState({
+        name: user?.name || '',
+        phone: user?.phone || '',
+        password: ''
+    });
+    const [profileMsg, setProfileMsg] = useState('');
+
     const openMealModal = (day, meal, data) => {
         const users = data.details.filter(u => u[meal] == 1);
         setModal({
@@ -127,6 +135,39 @@ export default function AdminDashboard() {
         }
     };
 
+    const handleUpdateProfile = async (e) => {
+        e.preventDefault();
+        setProfileMsg('');
+
+        if (!user || !user.id) {
+            setProfileMsg('User ID missing. Please logout and login again.');
+            return;
+        }
+
+        try {
+            console.log("Updating profile for:", user.id, adminProfile);
+            const res = await api.post('update_profile.php', {
+                user_id: user.id,
+                name: adminProfile.name,
+                phone: adminProfile.phone,
+                password: adminProfile.password
+            });
+            console.log("Response:", res.data);
+            if (res.data.success) {
+                setProfileMsg('Profile updated successfully!');
+                // Update localStorage
+                const updatedUser = { ...user, name: adminProfile.name, phone: adminProfile.phone };
+                localStorage.setItem('user', JSON.stringify(updatedUser));
+                setAdminProfile(prev => ({ ...prev, password: '' }));
+            } else {
+                setProfileMsg(res.data.message || 'Failed to update');
+            }
+        } catch (err) {
+            console.error("Update Error:", err);
+            setProfileMsg('Error: ' + (err.response?.data?.message || err.message || 'Unknown error'));
+        }
+    };
+
     const logout = () => {
         localStorage.removeItem('user');
         navigate('/login');
@@ -155,7 +196,13 @@ export default function AdminDashboard() {
                         className={`tab ${activeTab === 'users' ? 'active' : ''}`}
                         onClick={() => setActiveTab('users')}
                     >
-                        Manage Teachers
+                        Manage Asaatid
+                    </div>
+                    <div
+                        className={`tab ${activeTab === 'settings' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('settings')}
+                    >
+                        Settings
                     </div>
                 </div>
 
@@ -236,7 +283,7 @@ export default function AdminDashboard() {
 
                 {activeTab === 'users' && (
                     <div className="card">
-                        <h2 className="title">Add New Teacher</h2>
+                        <h2 className="title">Add New Asaatid</h2>
                         {msg && <div style={{ marginBottom: '1rem', color: msg.includes('succ') ? 'green' : 'red' }}>{msg}</div>}
                         <form onSubmit={handleCreateUser}>
                             <div className="form-group">
@@ -269,6 +316,44 @@ export default function AdminDashboard() {
                                 />
                             </div>
                             <button className="btn btn-primary" type="submit">Create Account</button>
+                        </form>
+                    </div>
+                )}
+
+                {activeTab === 'settings' && (
+                    <div className="card">
+                        <h2 className="title">Admin Settings</h2>
+                        {profileMsg && <div style={{ marginBottom: '1rem', color: profileMsg.includes('succ') ? 'green' : 'red' }}>{profileMsg}</div>}
+                        <form onSubmit={handleUpdateProfile}>
+                            <div className="form-group">
+                                <label className="label">My Name</label>
+                                <input
+                                    className="input"
+                                    value={adminProfile.name}
+                                    onChange={e => setAdminProfile({ ...adminProfile, name: e.target.value })}
+                                    required
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label className="label">My Phone (Login ID)</label>
+                                <input
+                                    className="input"
+                                    value={adminProfile.phone}
+                                    onChange={e => setAdminProfile({ ...adminProfile, phone: e.target.value })}
+                                    required
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label className="label">New Password (leave blank to keep current)</label>
+                                <input
+                                    className="input"
+                                    type="password"
+                                    value={adminProfile.password}
+                                    onChange={e => setAdminProfile({ ...adminProfile, password: e.target.value })}
+                                    placeholder="Enter new password"
+                                />
+                            </div>
+                            <button className="btn btn-primary" type="submit">Update Profile</button>
                         </form>
                     </div>
                 )}
