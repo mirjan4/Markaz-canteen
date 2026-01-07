@@ -22,9 +22,11 @@ export default function AdminDashboard() {
     const navigate = useNavigate();
     const user = JSON.parse(localStorage.getItem('user'));
     const [activeTab, setActiveTab] = useState('reports');
+    const [dropdownOpen, setDropdownOpen] = useState(false);
 
     // Reports State
     const [reportData, setReportData] = useState(null);
+    const [historyData, setHistoryData] = useState([]);
     const [modal, setModal] = useState(null);
 
     // Create User State
@@ -107,15 +109,43 @@ export default function AdminDashboard() {
     useEffect(() => {
         if (!user || user.role !== 'admin') { navigate('/login'); return; }
         if (activeTab === 'reports') fetchReport();
+        if (activeTab === 'history') fetchHistory(); // Fetch history when tab is active
     }, [activeTab]);
 
     // ... (keep fetchReport, handleCreateUser, logout as is - no changes needed, just matching context) 
+
     const fetchReport = async () => {
         try {
             const res = await api.get('reports.php');
             setReportData(res.data);
         } catch (err) {
             console.error(err);
+        }
+    };
+
+    const fetchHistory = async () => {
+        try {
+            const res = await api.get('get_history.php');
+            setHistoryData(res.data);
+        } catch (err) {
+            console.error("Failed to fetch history:", err);
+        }
+    };
+
+    const deleteOldHistory = async () => {
+        if (!window.confirm("Are you sure you want to delete all records older than 7 days? This cannot be undone.")) return;
+
+        try {
+            const res = await api.post('delete_history.php');
+            if (res.data.success) {
+                alert(res.data.message);
+                fetchHistory(); // Refresh
+            } else {
+                alert("Error: " + res.data.message);
+            }
+        } catch (err) {
+            console.error("Delete failed:", err);
+            alert("Failed to delete history.");
         }
     };
 
@@ -176,11 +206,30 @@ export default function AdminDashboard() {
     return (
         <div>
             {/* ... Navbar and Container ... */}
-            <nav className="navbar">
+            <nav className="navbar" style={{ position: 'relative', zIndex: 500 }}>
                 <div className="nav-brand">Canteen Admin</div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <span className="nav-user">{user?.name}</span>
-                    <button onClick={logout} className="btn btn-outline btn-sm">Logout</button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', position: 'relative' }}>
+                    <div
+                        className="nav-user"
+                        onClick={() => setDropdownOpen(!dropdownOpen)}
+                        style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 500, userSelect: 'none' }}
+                    >
+                        {user?.name} ▾
+                    </div>
+                    {dropdownOpen && (
+                        <div className="dropdown-menu">
+                            <div className="dropdown-item" onClick={() => { setActiveTab('history'); setDropdownOpen(false); }}>
+                                History
+                            </div>
+                            <div className="dropdown-item" onClick={() => { setActiveTab('settings'); setDropdownOpen(false); }}>
+                                Settings
+                            </div>
+                            <hr style={{ margin: '0.25rem 0', border: 'none', borderTop: '1px solid #eee' }} />
+                            <div className="dropdown-item danger" onClick={logout}>
+                                Logout
+                            </div>
+                        </div>
+                    )}
                 </div>
             </nav>
 
@@ -192,17 +241,12 @@ export default function AdminDashboard() {
                     >
                         Meal Reports
                     </div>
+                    {/* History and Settings removed from tabs */}
                     <div
                         className={`tab ${activeTab === 'users' ? 'active' : ''}`}
                         onClick={() => setActiveTab('users')}
                     >
-                        Manage Asaatid
-                    </div>
-                    <div
-                        className={`tab ${activeTab === 'settings' ? 'active' : ''}`}
-                        onClick={() => setActiveTab('settings')}
-                    >
-                        Settings
+                        Asaatida
                     </div>
                 </div>
 
@@ -277,6 +321,82 @@ export default function AdminDashboard() {
                                 </div>
                             );
                         })}
+                    </div>
+                )}
+
+                {activeTab === 'history' && (
+                    <div style={{ display: 'grid', gap: '1rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
+                            <button className="btn" style={{ backgroundColor: '#ef4444', color: 'white' }} onClick={deleteOldHistory}>
+                                Delete Records Older Than 7 Days
+                            </button>
+                        </div>
+                        {historyData.map((dayData, index) => (
+                            <div className="card" key={index}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <h2 className="title" style={{ textTransform: 'capitalize', margin: 0 }}>
+                                        {formatDateDisplay(dayData.date)}
+                                    </h2>
+                                    <button
+                                        className="btn btn-outline btn-sm"
+                                        onClick={() => printReport(dayData.date, dayData)}
+                                    >
+                                        Print
+                                    </button>
+                                </div>
+                                <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', marginTop: '1rem' }}>
+                                    {['breakfast', 'lunch', 'dinner'].map(meal => (
+                                        <div
+                                            key={meal}
+                                            className="badge"
+                                            style={{
+                                                background: meal === 'breakfast' ? '#e0e7ff' : meal === 'lunch' ? '#fce7f3' : '#dcfce7',
+                                                color: meal === 'breakfast' ? '#4f46e5' : meal === 'lunch' ? '#db2777' : '#16a34a',
+                                                cursor: 'pointer',
+                                                userSelect: 'none'
+                                            }}
+                                            onClick={() => openMealModal(dayData.date, meal, dayData)}
+                                            title={`Click to view who is having ${meal}`}
+                                        >
+                                            {meal.charAt(0).toUpperCase() + meal.slice(1)}: {dayData.counts[`${meal}_count`] || 0}
+                                        </div>
+                                    ))}
+                                </div>
+
+                                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+                                    <thead>
+                                        <tr style={{ textAlign: 'left', borderBottom: '1px solid #eee' }}>
+                                            <th style={{ padding: '0.5rem' }}>Name</th>
+                                            <th style={{ padding: '0.5rem' }}>Phone</th>
+                                            <th style={{ padding: '0.5rem', textAlign: 'center' }}>B</th>
+                                            <th style={{ padding: '0.5rem', textAlign: 'center' }}>L</th>
+                                            <th style={{ padding: '0.5rem', textAlign: 'center' }}>D</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {dayData.details.map((row, i) => (
+                                            <tr key={i} style={{ borderBottom: '1px solid #f8fafc' }}>
+                                                <td style={{ padding: '0.5rem' }}>{row.name}</td>
+                                                <td style={{ padding: '0.5rem', color: '#666' }}>{row.phone}</td>
+                                                <td style={{ padding: '0.5rem', textAlign: 'center' }}>
+                                                    {row.breakfast == 1 ? '✅' : '-'}
+                                                </td>
+                                                <td style={{ padding: '0.5rem', textAlign: 'center' }}>
+                                                    {row.lunch == 1 ? '✅' : '-'}
+                                                </td>
+                                                <td style={{ padding: '0.5rem', textAlign: 'center' }}>
+                                                    {row.dinner == 1 ? '✅' : '-'}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                        {dayData.details.length === 0 && (
+                                            <tr><td colSpan="5" style={{ padding: '1rem', textAlign: 'center', color: '#999' }}>No submissions yet</td></tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        ))}
+                        {historyData.length === 0 && <div className="card">No history available</div>}
                     </div>
                 )}
 

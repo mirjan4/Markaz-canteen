@@ -22,6 +22,8 @@ export default function TeacherDashboard() {
     const navigate = useNavigate();
     const user = JSON.parse(localStorage.getItem('user'));
     const [activeTab, setActiveTab] = useState('today');
+    const [dropdownOpen, setDropdownOpen] = useState(false);
+    const [historyData, setHistoryData] = useState([]);
 
     const todayDate = new Date();
     const tomorrowDate = new Date(todayDate);
@@ -67,6 +69,19 @@ export default function TeacherDashboard() {
         }
     };
 
+    const fetchHistory = async () => {
+        try {
+            const res = await api.get(`user_history.php?user_id=${user.id}`);
+            setHistoryData(res.data);
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
+    useEffect(() => {
+        if (activeTab === 'history') fetchHistory();
+    }, [activeTab]);
+
     const currentKey = activeTab === 'today' ? todayStr : tomorrowStr;
     const currentMeal = meals[currentKey] || { breakfast: false, lunch: false, dinner: false };
 
@@ -110,11 +125,30 @@ export default function TeacherDashboard() {
 
     return (
         <div>
-            <nav className="navbar">
+            <nav className="navbar" style={{ position: 'relative', zIndex: 500 }}>
                 <div className="nav-brand">Canteen App</div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <span className="nav-user">Hi, {user?.name}</span>
-                    <button onClick={logout} className="btn btn-outline btn-sm">Logout</button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', position: 'relative' }}>
+                    <div
+                        className="nav-user"
+                        onClick={() => setDropdownOpen(!dropdownOpen)}
+                        style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 500, userSelect: 'none' }}
+                    >
+                        Hi, {user?.name} ▾
+                    </div>
+                    {dropdownOpen && (
+                        <div className="dropdown-menu">
+                            <div className="dropdown-item" onClick={() => { setActiveTab('history'); setDropdownOpen(false); }}>
+                                History
+                            </div>
+                            <div className="dropdown-item" onClick={() => { setActiveTab('today'); setDropdownOpen(false); }}>
+                                Select Meals
+                            </div>
+                            <hr style={{ margin: '0.25rem 0', border: 'none', borderTop: '1px solid #eee' }} />
+                            <div className="dropdown-item danger" onClick={logout}>
+                                Logout
+                            </div>
+                        </div>
+                    )}
                 </div>
             </nav>
             <div className="container" style={{ marginTop: '2rem' }}>
@@ -136,42 +170,71 @@ export default function TeacherDashboard() {
                     </div>
                 </div>
 
-                <div className="card">
-                    {msg && <div style={{ color: msg.includes('Fail') ? 'red' : 'green', marginBottom: '1rem' }}>{msg}</div>}
-
-                    {['Breakfast', 'Lunch', 'Dinner'].map(type => {
-                        const key = type.toLowerCase();
-                        const isActive = currentMeal[key];
-                        return (
-                            <div key={type} className="meal-selector">
-                                <span style={{ fontWeight: 500 }}>{type}</span>
-                                <div className="toggle-group">
-                                    <button
-                                        className={`toggle-btn no ${!isActive ? 'active' : ''}`}
-                                        onClick={() => isActive && toggle(key)}
-                                    >
-                                        No
-                                    </button>
-                                    <button
-                                        className={`toggle-btn yes ${isActive ? 'active' : ''}`}
-                                        onClick={() => !isActive && toggle(key)}
-                                    >
-                                        Yes
-                                    </button>
-                                </div>
-                            </div>
-                        );
-                    })}
-
-                    <div style={{ marginTop: '2rem' }}>
-                        <button className="btn btn-primary" onClick={save} disabled={loading}>
-                            {loading ? 'Saving...' : 'Submit Selection'}
-                        </button>
-                        <p style={{ fontSize: '0.75rem', color: '#999', marginTop: '0.5rem', textAlign: 'center' }}>
-                            Make sure to submit for both days if needed.
-                        </p>
+                {activeTab === 'history' ? (
+                    <div className="card">
+                        <h2 className="title">My Meal History (7 Days)</h2>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+                            <thead>
+                                <tr style={{ textAlign: 'left', borderBottom: '1px solid #eee' }}>
+                                    <th style={{ padding: '0.5rem' }}>Date</th>
+                                    <th style={{ padding: '0.5rem', textAlign: 'center' }}>Break.</th>
+                                    <th style={{ padding: '0.5rem', textAlign: 'center' }}>Lunch</th>
+                                    <th style={{ padding: '0.5rem', textAlign: 'center' }}>Dinner</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {historyData.map((day, i) => (
+                                    <tr key={i} style={{ borderBottom: '1px solid #f8fafc' }}>
+                                        <td style={{ padding: '0.5rem' }}>{formatDateDisplay(new Date(day.date))}</td>
+                                        <td style={{ padding: '0.5rem', textAlign: 'center' }}>{day.meals.breakfast == 1 ? '✅' : '-'}</td>
+                                        <td style={{ padding: '0.5rem', textAlign: 'center' }}>{day.meals.lunch == 1 ? '✅' : '-'}</td>
+                                        <td style={{ padding: '0.5rem', textAlign: 'center' }}>{day.meals.dinner == 1 ? '✅' : '-'}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                        <div style={{ marginTop: '1rem', textAlign: 'center' }}>
+                            <button className="btn btn-outline" onClick={() => setActiveTab('today')}>Back to Selection</button>
+                        </div>
                     </div>
-                </div>
+                ) : (
+                    <div className="card">
+                        {msg && <div style={{ color: msg.includes('Fail') ? 'red' : 'green', marginBottom: '1rem' }}>{msg}</div>}
+
+                        {['Breakfast', 'Lunch', 'Dinner'].map(type => {
+                            const key = type.toLowerCase();
+                            const isActive = currentMeal[key];
+                            return (
+                                <div key={type} className="meal-selector">
+                                    <span style={{ fontWeight: 500 }}>{type}</span>
+                                    <div className="toggle-group">
+                                        <button
+                                            className={`toggle-btn no ${!isActive ? 'active' : ''}`}
+                                            onClick={() => isActive && toggle(key)}
+                                        >
+                                            No
+                                        </button>
+                                        <button
+                                            className={`toggle-btn yes ${isActive ? 'active' : ''}`}
+                                            onClick={() => !isActive && toggle(key)}
+                                        >
+                                            Yes
+                                        </button>
+                                    </div>
+                                </div>
+                            );
+                        })}
+
+                        <div style={{ marginTop: '2rem' }}>
+                            <button className="btn btn-primary" onClick={save} disabled={loading}>
+                                {loading ? 'Saving...' : 'Submit Selection'}
+                            </button>
+                            <p style={{ fontSize: '0.75rem', color: '#999', marginTop: '0.5rem', textAlign: 'center' }}>
+                                Make sure to submit for both days if needed.
+                            </p>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );

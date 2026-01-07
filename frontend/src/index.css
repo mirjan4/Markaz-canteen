@@ -34,7 +34,8 @@ body {
 /* Layout */
 .container {
   width: 100%;
-  max-width: 600px; /* Mobile focused */
+  max-width: 600px;
+  /* Mobile focused */
   margin: 0 auto;
   padding: 1rem;
 }
@@ -119,9 +120,9 @@ body {
 }
 
 .btn-sm {
-    width: auto;
-    padding: 0.4rem 0.8rem;
-    font-size: 0.85rem;
+  width: auto;
+  padding: 0.4rem 0.8rem;
+  font-size: 0.85rem;
 }
 
 /* Toggle Switch / Selection */
@@ -158,12 +159,13 @@ body {
 }
 
 .toggle-btn.no.active {
-    background-color: #ef4444;
-    border-color: #ef4444;
+  background-color: #ef4444;
+  border-color: #ef4444;
 }
+
 .toggle-btn.yes.active {
-    background-color: #22c55e;
-    border-color: #22c55e;
+  background-color: #22c55e;
+  border-color: #22c55e;
 }
 
 /* Tabs */
@@ -207,30 +209,66 @@ body {
 }
 
 .navbar {
-    background: white;
-    padding: 1rem;
-    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+  background: white;
+  padding: 1rem;
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .nav-brand {
-    font-weight: 700;
-    color: var(--primary);
-    font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--primary);
+  font-size: 1.2rem;
 }
 
 .nav-user {
-    font-size: 0.9rem;
-    color: var(--text-light);
+  font-size: 0.9rem;
+  color: var(--text-light);
 }
 
 .link {
-    color: var(--primary);
-    text-decoration: none;
-    font-size: 0.9rem; 
+  color: var(--primary);
+  text-decoration: none;
+  font-size: 0.9rem;
 }
+
 .link:hover {
-    text-decoration: underline;
+  text-decoration: underline;
+}
+
+/* Dropdown */
+.dropdown-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 0.5rem;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border: 1px solid var(--border);
+  width: 180px;
+  overflow: hidden;
+  z-index: 1000;
+}
+
+.dropdown-item {
+  padding: 0.75rem 1rem;
+  font-size: 0.9rem;
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.dropdown-item:hover {
+  background: #f1f5f9;
+}
+
+.dropdown-item.danger {
+  color: #ef4444;
+}
+
+.dropdown-item.danger:hover {
+  background: #fef2f2;
 }
